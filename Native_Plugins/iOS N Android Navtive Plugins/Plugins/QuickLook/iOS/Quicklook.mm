@@ -3,6 +3,10 @@
 #import <QuickLook/QuickLook.h>
 #import <ARKit/ARKit.h>
 
+typedef void (*INT_CALLBACK)(int);
+typedef void (*VOID_CALLBACK)(void);
+
+
 /*
  * credit : https://medium.com/ios-os-x-development/ios-using-quicklook-for-fun-and-profit-d9a338e2f7fb
  *  Quicklook Preview Item
@@ -43,11 +47,10 @@
 }@end
 /***/
 
-typedef void (*INT_CALLBACK)(int);
-
-@interface Quicklook : NSObject
+@interface Quicklook : NSObject<QLPreviewControllerDelegate>
 {
-    INT_CALLBACK alertCallBack;
+    VOID_CALLBACK quickLookWillDismissCallBack;
+    //VOID_CALLBACK quickLookDidDismissCallBack;
 }
 @end
 
@@ -80,7 +83,20 @@ static Quicklook *_sharedInstance;
     NSLog(@"initHelper called");
 }
 
--(void)ShowQuickLook:(const char*) filePath
+
+- (void)previewControllerWillDismiss:(QLPreviewController *)controller{
+    NSLog(@"$$$$ Will Dismiss callback !!!!");
+    if(quickLookWillDismissCallBack != nil){
+        quickLookWillDismissCallBack();
+    }
+}
+
+//- (void)previewControllerDidDismiss:(QLPreviewController *)controller{
+//    NSLog(@"$$$$ About to send a Did Dismiss callback !!!!");
+//    //self.closingCallback();
+//}
+
+-(void)ShowQuickLook:(const char*) filePath quickLookDismissCallBack:(VOID_CALLBACK)quickLookDismissCallBack
 {
     NSLog(@"$$$$ ShowQuickLook Called !!!!");
     NSURL *fileUrl = [NSURL fileURLWithPath:[NSString stringWithUTF8String:filePath]];
@@ -99,8 +115,12 @@ static Quicklook *_sharedInstance;
     
     previewController.dataSource = dataSource;
     
-    UIViewController *rootViewController = UnityGetGLViewController();
+    previewController.delegate = self;
     
+    quickLookWillDismissCallBack = quickLookDismissCallBack;
+            
+    UIViewController *rootViewController = UnityGetGLViewController();
+        
     [rootViewController presentViewController:previewController animated:YES completion:nil];
     
     NSLog(@"$$$$ ShowQuickLook ended !!!!");
@@ -110,7 +130,7 @@ static Quicklook *_sharedInstance;
 
 extern "C"
 {
-void _QuickLook( const char* file ){
-    [[Quicklook sharedInstance] ShowQuickLook:file];
+void _QuickLook( const char* file , VOID_CALLBACK quickLookDismissCallBack){
+    [[Quicklook sharedInstance] ShowQuickLook:file quickLookDismissCallBack:quickLookDismissCallBack];
 }
 }
